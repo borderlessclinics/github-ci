@@ -3,6 +3,8 @@ set -e
 
 # requires - KUBE_ROOT, KUBE_NS, KUBE_APP, KUBE_ENV
 
+clean_failures=0
+
 echo "clean :: starting clean up procedure"
 echo "clean :: kube root - $KUBE_ROOT"
 echo "clean :: kube namespace - $KUBE_NS"
@@ -30,7 +32,7 @@ if [ -d "$kube_shared_dir" ]; then
     for file in "$kube_shared_dir"/*; do
         [ -f "$file" ] || continue
         echo "clean :: deleting → $file"
-        envsubst < "$file" | kubectl delete -n "$KUBE_NS" --ignore-not-found=true --wait=false -f - || true
+        envsubst < "$file" | kubectl delete -n "$KUBE_NS" --ignore-not-found=true --wait=false -f - || clean_failures=$((clean_failures + 1))
     done
 else
     echo "clean :: No shared config found."
@@ -42,11 +44,15 @@ if [ -d "$kube_env_dir" ]; then
     for file in "$kube_env_dir"/*; do
         [ -f "$file" ] || continue
         echo "clean :: deleting → $file"
-        envsubst < "$file" | kubectl delete -n "$KUBE_NS" --ignore-not-found=true --wait=false -f - || true
+        envsubst < "$file" | kubectl delete -n "$KUBE_NS" --ignore-not-found=true --wait=false -f - || clean_failures=$((clean_failures + 1))
     done
 else
     echo "clean :: No environment config found."
 fi
+
+kube_certificate_secret="$KUBE_APP-cert-key"
+echo "clean :: deleting → secret/$kube_certificate_secret"
+kubectl delete secret "$kube_certificate_secret" -n "$KUBE_NS" --ignore-not-found=true --wait=false || clean_failures=$((clean_failures + 1))
 
 # --- Wait for Resources to be Fully Deleted ---
 echo "clean :: Waiting for resources to be fully deleted..."
@@ -58,6 +64,11 @@ if [ -f "$kube_post_clean_script" ]; then
     source "$kube_post_clean_script"
 else
     echo "clean :: No post-clean hook found, skipping."
+fi
+
+if [ "$clean_failures" -ne 0 ]; then
+    echo "clean :: $clean_failures delete(s) failed. The environment may still hold resources." >&2
+    exit 1
 fi
 
 echo "clean :: cleanup procedure finished successfully."
