@@ -38,6 +38,9 @@ inputs:
     required: false
     description: 'Build context to use with docker. Default to checked out Git directory.'
     default: .
+  dockerfile:
+    required: false
+    description: 'Path to the Dockerfile, relative to the workspace (not the context). Defaults to Dockerfile at the root of the context.'
 outputs:
   image_ref:
     description: 'Built docker image reference'
@@ -104,6 +107,7 @@ runs:
       uses: docker/build-push-action@v4
       with:
         context: ${{ inputs.context }}
+        file: ${{ inputs.dockerfile }}
         tags: ${{ steps.tag.outputs.value }}:${{ inputs.tag }}
         build-args: ${{ inputs.build_args }}
         # @see - https://docs.docker.com/build/ci/github-actions/cache/#github-cache
