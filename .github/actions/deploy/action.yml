@@ -205,7 +205,7 @@ runs:
       uses: marocchino/sticky-pull-request-comment@v2
       with:
         path: ci_artifacts/summary.md
-        header: diagnostics-summary
+        header: diagnostics-summary-${{ inputs.app_name }}
         hide_and_recreate: true
         hide_classify: "OUTDATED"
     
